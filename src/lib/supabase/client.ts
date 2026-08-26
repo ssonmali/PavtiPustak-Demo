@@ -1,12 +1,14 @@
 "use client";
 
-import { createBrowserClient } from "@supabase/ssr";
-import type { Database } from "@/lib/types";
+import { createDemoBrowserClient } from "@/lib/demo/browser-client";
 
-/** Supabase client for Client Components (browser, cookie-backed session). */
+/**
+ * DEMO BUILD — see the note in `server.ts`.
+ *
+ * In the app the browser client is used only for Realtime: table changes and
+ * editing presence. The demo answers both over BroadcastChannel, so two tabs
+ * behave like two volunteers' phones.
+ */
 export function createClient() {
-  return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  return createDemoBrowserClient();
 }

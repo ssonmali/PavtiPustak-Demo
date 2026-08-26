@@ -9,6 +9,7 @@ import {
 import { getDictionary } from "@/lib/i18n/server";
 import { LanguageToggle } from "@/components/language-toggle";
 import { LoginForm } from "./login-form";
+import { DemoCredentials } from "@/components/demo/demo-credentials";
 
 export const metadata = { title: "Login · SGMM Pustak" };
 
@@ -48,6 +49,8 @@ export default async function LoginPage({
             />
           </CardContent>
         </Card>
+
+        <DemoCredentials locale={locale} />
 
         <div className="mt-4 flex justify-center">
           <LanguageToggle locale={locale} />

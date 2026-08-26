@@ -1,67 +1,31 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import type { Database } from "@/lib/types";
+import { SESSION_COOKIE } from "@/lib/demo/config";
 
 /**
- * Next.js 16 renamed Middleware to Proxy. This refreshes the Supabase auth
- * cookies on every request and keeps unauthenticated users off /dashboard.
- * It is an optimistic check only — each Server Action re-verifies the user.
+ * DEMO BUILD — the production proxy validated the Supabase JWT on every
+ * request. There is no token to validate here, so the gate is the demo session
+ * cookie set by the login action. The routing it performs is identical, and
+ * each Server Action still re-checks, exactly as before.
  */
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
-
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          for (const { name, value } of cookiesToSet) {
-            request.cookies.set(name, value);
-          }
-          response = NextResponse.next({ request });
-          for (const { name, value, options } of cookiesToSet) {
-            response.cookies.set(name, value, options);
-          }
-        },
-      },
-    },
-  );
-
-  // getUser() (not getSession()) — it validates the JWT with Supabase.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const signedIn = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
   const { pathname } = request.nextUrl;
 
-  if (!user && pathname.startsWith("/dashboard")) {
+  if (!signedIn && pathname.startsWith("/dashboard")) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user && (pathname === "/login" || pathname === "/")) {
+  if (signedIn && (pathname === "/login" || pathname === "/")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  return response;
+  return NextResponse.next({ request });
 }
 
 export const config = {
   matcher: [
-    // Everything except static assets. Each match costs an auth.getUser()
-    // round-trip to Supabase, so the service worker and the manifest are
-    // excluded too — they are fetched on every load and carry nothing to gate.
-    //
-    // api/health is excluded for a second reason: it exists to answer "did a
-    // request reach the server", and running it through an auth round-trip
-    // would make that answer depend on Supabase being quick. A slow database
-    // would then time the probe out and report a working connection as
-    // offline, which is the bug the probe was added to fix.
     "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|api/health|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|txt)$).*)",
   ],
 };
