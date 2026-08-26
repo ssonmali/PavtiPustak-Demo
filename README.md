@@ -46,9 +46,9 @@ and the chart ends *yesterday* — but it is fiction throughout.
 ## How a full-stack app runs with no back end
 
 The production app is Next.js on Supabase — Postgres, Auth, Realtime and
-row-level security. This fork changes **three files**: `src/lib/supabase/`
-(server and browser clients) and `src/proxy.ts`. Everything else — every page,
-dialog, Server Action, validation rule and query — is the production code,
+row-level security. Taking the database out changes **three files**:
+`src/lib/supabase/` (server and browser clients) and `src/proxy.ts`. Every
+page, dialog, Server Action, validation rule and query is the production code,
 untouched.
 
 In their place, `src/lib/demo/` answers the same query language from a seeded
@@ -72,6 +72,32 @@ from another's, and need no database anywhere.
 The SQL the views are transcribed from is still in [`supabase/`](supabase/), so
 the real data model is there to read.
 
+## The animation
+
+Seven more files carry motion, because a demo is watched as much as it is used.
+`src/components/motion/` holds the vocabulary — four springs, a count-up, an
+entrance, a page transition, a press — and the screens compose it:
+
+- the balance and every stat tile **count to their figure**, and travel to the
+  new one when you change the period filter
+- the nav marker is a **shared element**: it slides from the tab you left to the
+  tab you tapped, rather than disappearing and reappearing
+- the chart's bars **grow from the axis**, one after the next along the month
+- marking a pledge received **flies the row out** and closes the gap behind it,
+  while the total counts down to match
+- pages **swap** rather than cut, lists arrive **staggered**, and cards answer a
+  press
+
+Two things it does not do. It respects `prefers-reduced-motion` — the whole
+system drops to a plain crossfade when the operating system asks, which is the
+one setting a deliberately loud interface must not ignore. And the desktop
+receipts *table* is left alone: a layout animation on a `<tr>` fights the
+table's own column sizing, so only the phone's card list animates.
+
+Every figure is also rendered at its real value on the server. A counter seeded
+at zero would put `₹0` in the HTML, and a receipt book that reads zero until
+JavaScript arrives is worse than one that never animated.
+
 `npm run verify` covers the demo layer too: the view transcriptions and the
 query engine have their own tests, because a view that drifts from its SQL does
 not crash — it quietly shows the wrong money.
@@ -94,6 +120,7 @@ at Vercel and it works.
 
 ## Stack
 
-Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · installable PWA
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · Motion
+(Framer Motion) · installable PWA
 
 Built by [Sanket Sonmali](https://github.com/ssonmali).

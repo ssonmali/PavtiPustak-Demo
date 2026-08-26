@@ -12,6 +12,8 @@ import { RealtimeRefresh } from "./realtime-refresh";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { NotificationBell } from "./notification-bell";
 import { DemoBanner } from "@/components/demo/demo-banner";
+import { MotionProvider } from "@/components/motion/motion-provider";
+import { PageTransition } from "@/components/motion/page-transition";
 import { DemoTour } from "@/components/demo/demo-tour";
 
 export default async function DashboardLayout({
@@ -46,47 +48,52 @@ export default async function DashboardLayout({
 
   return (
     <I18nProvider locale={locale}>
-      <ServiceWorkerRegistrar />
-      <div className="flex min-h-full flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 print:hidden">
-          <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-4">
-            <Image
-              src="/idol.jpg"
-              alt=""
-              width={36}
-              height={36}
-              className="size-9 shrink-0 rounded-xl object-cover"
-            />
-            <div className="mr-auto min-w-0">
-              <p className="truncate font-display text-[0.95rem] leading-tight font-semibold tracking-tight">
-                {process.env.NEXT_PUBLIC_MANDAL_NAME ?? "Shri Ganesh Mitra Mandal"}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {myName ?? volunteerName(user.email) ?? user.email}
-              </p>
+      <MotionProvider>
+        <ServiceWorkerRegistrar />
+        <div className="flex min-h-full flex-1 flex-col">
+          <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 print:hidden">
+            <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-4">
+              <Image
+                src="/idol.jpg"
+                alt=""
+                width={36}
+                height={36}
+                className="size-9 shrink-0 rounded-xl object-cover"
+              />
+              <div className="mr-auto min-w-0">
+                <p className="truncate font-display text-[0.95rem] leading-tight font-semibold tracking-tight">
+                  {process.env.NEXT_PUBLIC_MANDAL_NAME ??
+                    "Shri Ganesh Mitra Mandal"}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {myName ?? volunteerName(user.email) ?? user.email}
+                </p>
+              </div>
+              <RealtimeRefresh />
+              <NotificationBell dueToday={dueToday ?? []} />
+              <SettingsMenu
+                locale={locale}
+                name={myName}
+                email={user.email ?? ""}
+                derivedName={volunteerName(user.email) ?? ""}
+              />
             </div>
-            <RealtimeRefresh />
-            <NotificationBell dueToday={dueToday ?? []} />
-            <SettingsMenu
-              locale={locale}
-              name={myName}
-              email={user.email ?? ""}
-              derivedName={volunteerName(user.email) ?? ""}
-            />
+          </header>
+
+          {/* DEMO BUILD — neither of these exists in the production app. */}
+          <DemoBanner />
+
+          <div className="mx-auto flex w-full max-w-7xl flex-1">
+            <SidebarNav />
+            <main className="min-w-0 flex-1 p-3 sm:p-4">
+              <PageTransition>{children}</PageTransition>
+            </main>
           </div>
-        </header>
 
-        {/* DEMO BUILD — neither of these exists in the production app. */}
-        <DemoBanner />
-
-        <div className="mx-auto flex w-full max-w-7xl flex-1">
-          <SidebarNav />
-          <main className="min-w-0 flex-1 p-3 sm:p-4">{children}</main>
+          <BottomNav />
+          <DemoTour />
         </div>
-
-        <BottomNav />
-        <DemoTour />
-      </div>
+      </MotionProvider>
     </I18nProvider>
   );
 }
