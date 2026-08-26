@@ -9,10 +9,8 @@ import {
   ReceiptText,
   Wallet,
 } from "lucide-react";
-import { motion } from "motion/react";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
-import { GLIDE, SNAPPY } from "@/components/motion/springs";
 
 const ITEMS = [
   { href: "/dashboard", labelKey: "nav.overview", icon: LayoutDashboard },
@@ -44,27 +42,14 @@ export function SidebarNav() {
             )}
           >
             {/* A saffron bar marks the current page without relying on colour
-                alone — the label is also emphasised.
-
-                DEMO BUILD — one `layoutId` shared between all five links, so
-                the bar travels from the old page to the new one instead of
-                disappearing here and reappearing there. */}
+                alone — the label is also emphasised. */}
             {active ? (
-              <motion.span
-                layoutId="sidebar-marker"
+              <span
                 aria-hidden
-                transition={GLIDE}
                 className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-[image:var(--brand-gradient)]"
               />
             ) : null}
-            <motion.span
-              whileHover={{ scale: 1.18, rotate: -6 }}
-              whileTap={{ scale: 0.9 }}
-              transition={SNAPPY}
-              className="flex shrink-0"
-            >
-              <Icon className={cn("size-4", active && "text-primary")} />
-            </motion.span>
+            <Icon className={cn("size-4 shrink-0", active && "text-primary")} />
             {t(labelKey)}
           </Link>
         );
@@ -93,22 +78,12 @@ export function BottomNav() {
             )}
           >
             {active ? (
-              <motion.span
-                layoutId="bottom-marker"
+              <span
                 aria-hidden
-                transition={GLIDE}
                 className="absolute top-0 h-0.5 w-8 rounded-full bg-[image:var(--brand-gradient)]"
               />
             ) : null}
-            {/* The icon springs on the tab you land on — the tap target is
-                thumb-sized and the label is tiny, so the icon carries it. */}
-            <motion.span
-              animate={active ? { scale: 1.15, y: -1 } : { scale: 1, y: 0 }}
-              whileTap={{ scale: 0.85 }}
-              transition={SNAPPY}
-            >
-              <Icon className="size-5" />
-            </motion.span>
+            <Icon className="size-5" />
             <span className="truncate px-1">{t(labelKey)}</span>
           </Link>
         );

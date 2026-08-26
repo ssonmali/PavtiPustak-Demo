@@ -26,11 +26,6 @@ import {
 } from "@/lib/receipt-utils";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
-import { motion } from "motion/react";
-import { CountUp } from "@/components/motion/count-up";
-import { BOUNCY } from "@/components/motion/springs";
-import { Press } from "@/components/motion/press";
-import { Reveal, Stagger, StaggerItem } from "@/components/motion/reveal";
 import {
   Card,
   CardContent,
@@ -164,31 +159,20 @@ export function Overview({
     {
       // Everything recorded, received or not — what the mandal is counting on.
       label: t("stats.estimated"),
-      // DEMO BUILD — the raw figure and its formatter travel separately, so
-      // the tile can count to it. See CountUp.
-      value: total + unpaid,
-      format: formatAmount,
+      value: formatAmount(total + unpaid),
       icon: Sigma,
       tone: "info" as const,
     },
     {
       label: t("stats.total"),
-      value: total,
-      format: formatAmount,
+      value: formatAmount(total),
       icon: IndianRupee,
       tone: "positive" as const,
     },
-    {
-      label: t("stats.receipts"),
-      value: count,
-      // A tally, not an amount — it must not pick up a ₹ or Indian grouping.
-      format: (n: number) => String(n),
-      icon: ReceiptIcon,
-    },
+    { label: t("stats.receipts"), value: String(count), icon: ReceiptIcon },
     {
       label: t("stats.unpaid"),
-      value: unpaid,
-      format: formatAmount,
+      value: formatAmount(unpaid),
       icon: Clock,
       tone: "pending" as const,
       hint: unpaidCount
@@ -214,205 +198,180 @@ export function Overview({
       {/* Collected less spent. Shown even at zero spend so the figure is a
           fixture of the dashboard rather than something that appears once the
           first expense is recorded. */}
-      <Reveal>
-        <Card
-          className={cn(
-            "card-elevated accent-top",
-            balance < 0
-              ? "[--accent-line:var(--destructive)]"
-              : "[--accent-line:var(--positive)]",
-          )}
-        >
-          <CardHeader>
-            <CardDescription className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-lg",
-                  balance < 0
-                    ? "bg-destructive/12 text-destructive"
-                    : "bg-positive/12 text-positive",
-                )}
-              >
-                <Wallet className="size-3.5" />
-              </span>
-              {t("balance.title")}
-            </CardDescription>
-            <CardTitle
+      <Card
+        className={cn(
+          "card-elevated accent-top",
+          balance < 0
+            ? "[--accent-line:var(--destructive)]"
+            : "[--accent-line:var(--positive)]",
+        )}
+      >
+        <CardHeader>
+          <CardDescription className="flex items-center gap-2">
+            <span
               className={cn(
-                "text-3xl font-semibold tabular-nums sm:text-4xl",
-                // A negative balance is a real state — the mandal has committed
-                // more than it has taken in — so it is called out, not hidden.
-                balance < 0 ? "text-destructive" : "text-positive-ink",
+                "flex size-7 items-center justify-center rounded-lg",
+                balance < 0
+                  ? "bg-destructive/12 text-destructive"
+                  : "bg-positive/12 text-positive",
               )}
             >
-              <CountUp value={balance} format={formatAmount} duration={1.4} />
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {balance < 0 ? (
-                <span className="flex items-center gap-1.5 text-destructive">
-                  <TriangleAlert className="size-3.5 shrink-0" />
-                  {t("balance.overspent")}
-                </span>
-              ) : (
-                t("balance.subtitle")
-              )}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-              <div className="flex items-baseline gap-2">
-                <dt className="text-muted-foreground">
-                  {t("balance.collected")}
-                </dt>
-                <dd className="font-medium tabular-nums text-positive-ink">
-                  +<CountUp value={total} format={formatAmount} />
-                </dd>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <dt className="text-muted-foreground">{t("balance.spent")}</dt>
-                <dd className="font-medium tabular-nums text-destructive">
-                  &minus;
-                  <CountUp value={spent} format={formatAmount} />
-                </dd>
-              </div>
-              {/* Bills committed but not settled. Beside the spent figure, never
+              <Wallet className="size-3.5" />
+            </span>
+            {t("balance.title")}
+          </CardDescription>
+          <CardTitle
+            className={cn(
+              "text-3xl font-semibold tabular-nums sm:text-4xl",
+              // A negative balance is a real state — the mandal has committed
+              // more than it has taken in — so it is called out, not hidden.
+              balance < 0 ? "text-destructive" : "text-positive-ink",
+            )}
+          >
+            {formatAmount(balance)}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {balance < 0 ? (
+              <span className="flex items-center gap-1.5 text-destructive">
+                <TriangleAlert className="size-3.5 shrink-0" />
+                {t("balance.overspent")}
+              </span>
+            ) : (
+              t("balance.subtitle")
+            )}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            <div className="flex items-baseline gap-2">
+              <dt className="text-muted-foreground">
+                {t("balance.collected")}
+              </dt>
+              <dd className="font-medium tabular-nums text-positive-ink">
+                +{formatAmount(total)}
+              </dd>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <dt className="text-muted-foreground">{t("balance.spent")}</dt>
+              <dd className="font-medium tabular-nums text-destructive">
+                &minus;{formatAmount(spent)}
+              </dd>
+            </div>
+            {/* Bills committed but not settled. Beside the spent figure, never
                 inside it: the cash is still in the box. */}
-              {owed > 0 ? (
-                <div className="flex items-baseline gap-2">
-                  <dt className="text-muted-foreground">
-                    {t("expenses.owed")}
-                  </dt>
-                  <dd className="font-medium tabular-nums text-pending-ink">
-                    {formatAmount(owed)}
-                  </dd>
-                </div>
-              ) : null}
-              {pledges && Number(pledges.expected) > 0 ? (
-                <div className="flex items-baseline gap-2">
-                  <dt className="text-muted-foreground">{t("due.expected")}</dt>
-                  <dd className="font-medium tabular-nums text-pending-ink">
-                    {formatAmount(pledges.expected)}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          </CardContent>
-        </Card>
-      </Reveal>
+            {owed > 0 ? (
+              <div className="flex items-baseline gap-2">
+                <dt className="text-muted-foreground">{t("expenses.owed")}</dt>
+                <dd className="font-medium tabular-nums text-pending-ink">
+                  {formatAmount(owed)}
+                </dd>
+              </div>
+            ) : null}
+            {pledges && Number(pledges.expected) > 0 ? (
+              <div className="flex items-baseline gap-2">
+                <dt className="text-muted-foreground">{t("due.expected")}</dt>
+                <dd className="font-medium tabular-nums text-pending-ink">
+                  {formatAmount(pledges.expected)}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </CardContent>
+      </Card>
 
-      <Stagger
-        delay={0.05}
-        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
-      >
-        {stats.map(({ label, value, format, icon: Icon, tone, hint }) => (
-          <StaggerItem key={label}>
-            <Press>
-              <Card
-                className={cn(
-                  "h-full",
-                  "card-elevated accent-top",
-                  tone === "info" && "[--accent-line:var(--info)]",
-                  tone === "positive" && "[--accent-line:var(--positive)]",
-                  tone === "pending" && "[--accent-line:var(--pending)]",
-                )}
-              >
-                <CardHeader>
-                  <CardDescription className="flex items-center gap-2">
-                    {/* The label sits beside the swatch, so the colour is a second
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {stats.map(({ label, value, icon: Icon, tone, hint }) => (
+          <Card
+            key={label}
+            className={cn(
+              "card-elevated accent-top",
+              tone === "info" && "[--accent-line:var(--info)]",
+              tone === "positive" && "[--accent-line:var(--positive)]",
+              tone === "pending" && "[--accent-line:var(--pending)]",
+            )}
+          >
+            <CardHeader>
+              <CardDescription className="flex items-center gap-2">
+                {/* The label sits beside the swatch, so the colour is a second
                     reading of the state and never the only one. */}
-                    <span
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        tone === "info" && "bg-info/12 text-info",
-                        tone === "positive" && "bg-positive/12 text-positive",
-                        tone === "pending" && "bg-pending/15 text-pending",
-                        !tone && "bg-accent text-accent-foreground",
-                      )}
-                    >
-                      <Icon className="size-3.5" />
-                    </span>
-                    {label}
-                  </CardDescription>
-                  {/* The figure stays in ink. These hues are picked to be told
+                <span
+                  className={cn(
+                    "flex size-7 items-center justify-center rounded-lg",
+                    tone === "info" && "bg-info/12 text-info",
+                    tone === "positive" && "bg-positive/12 text-positive",
+                    tone === "pending" && "bg-pending/15 text-pending",
+                    !tone && "bg-accent text-accent-foreground",
+                  )}
+                >
+                  <Icon className="size-3.5" />
+                </span>
+                {label}
+              </CardDescription>
+              {/* The figure stays in ink. These hues are picked to be told
                   apart as marks, and none of them clears 4.5:1 as text in
                   both themes. */}
-                  <CardTitle className="text-2xl font-semibold tabular-nums sm:text-3xl">
-                    <CountUp value={value} format={format} />
-                  </CardTitle>
-                  {hint ? (
-                    <CardDescription className="tabular-nums">
-                      {hint}
-                    </CardDescription>
-                  ) : null}
-                </CardHeader>
-              </Card>
-            </Press>
-          </StaggerItem>
+              <CardTitle className="text-2xl font-semibold tabular-nums sm:text-3xl">
+                {value}
+              </CardTitle>
+              {hint ? (
+                <CardDescription className="tabular-nums">
+                  {hint}
+                </CardDescription>
+              ) : null}
+            </CardHeader>
+          </Card>
         ))}
-      </Stagger>
+      </div>
 
       {!isSingleDay(period) ? (
-        <Reveal delay={0.12}>
-          <Card className="card-elevated">
-            <CardHeader>
-              <CardTitle>{t("chart.title")}</CardTitle>
-              <CardDescription>{t("chart.subtitle")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DailyCollections days={visible} />
-            </CardContent>
-          </Card>
-        </Reveal>
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle>{t("chart.title")}</CardTitle>
+            <CardDescription>{t("chart.subtitle")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DailyCollections days={visible} />
+          </CardContent>
+        </Card>
       ) : null}
 
       {volunteers.length > 0 ? (
-        <Reveal delay={0.18}>
-          <Card className="card-elevated">
-            <CardHeader>
-              <CardTitle>{t("volunteers.title")}</CardTitle>
-              <CardDescription>{t("volunteers.subtitle")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="flex flex-col gap-2">
-                {volunteers.map((v) => {
-                  const share = total
-                    ? Math.round((Number(v.total) / total) * 100)
-                    : 0;
-                  return (
-                    <li key={v.volunteer} className="flex flex-col gap-1">
-                      <div className="flex items-baseline gap-2 text-sm">
-                        <span className="wrap-anywhere min-w-0 flex-1 truncate">
-                          {displayName(v.volunteer, names)}
-                        </span>
-                        <span className="tabular-nums">
-                          <CountUp
-                            value={Number(v.total)}
-                            format={formatAmount}
-                          />
-                        </span>
-                        <span className="w-16 text-right text-xs text-muted-foreground tabular-nums">
-                          {t("chart.receiptsCount", { count: v.receipt_count })}
-                        </span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
-                        {/* Grown from nothing, and re-grown whenever the period
-                          filter changes the share. transformOrigin left, so it
-                          extends from the axis rather than out of its middle. */}
-                        <motion.div
-                          className="h-full origin-left rounded-full bg-[image:var(--brand-gradient)]"
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: share / 100 }}
-                          transition={{ ...BOUNCY, delay: 0.25 }}
-                          style={{ width: "100%" }}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
-        </Reveal>
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle>{t("volunteers.title")}</CardTitle>
+            <CardDescription>{t("volunteers.subtitle")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col gap-2">
+              {volunteers.map((v) => {
+                const share = total
+                  ? Math.round((Number(v.total) / total) * 100)
+                  : 0;
+                return (
+                  <li key={v.volunteer} className="flex flex-col gap-1">
+                    <div className="flex items-baseline gap-2 text-sm">
+                      <span className="wrap-anywhere min-w-0 flex-1 truncate">
+                        {displayName(v.volunteer, names)}
+                      </span>
+                      <span className="tabular-nums">
+                        {formatAmount(v.total)}
+                      </span>
+                      <span className="w-16 text-right text-xs text-muted-foreground tabular-nums">
+                        {t("chart.receiptsCount", { count: v.receipt_count })}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-[image:var(--brand-gradient)]"
+                        style={{ width: `${share}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
       ) : null}
 
       {/* Fully separate from every figure above: neither the balance, nor

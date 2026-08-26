@@ -3,9 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Compass, X } from "lucide-react";
-import { BOUNCY, SNAPPY, SPRING } from "@/components/motion/springs";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useDemoFlag } from "./use-demo-flag";
@@ -81,8 +79,7 @@ export function DemoTour() {
   const pathname = usePathname();
   // Marathi renders its own numerals everywhere else in the app; a Latin "4 / 9"
   // in the middle of a Marathi sentence is the sort of seam a demo shows off.
-  const num = (n: number) =>
-    locale === "mr" ? formatNumberMarathi(n) : String(n);
+  const num = (n: number) => (locale === "mr" ? formatNumberMarathi(n) : String(n));
   const [index, setIndex] = React.useState(0);
   const [seen, markSeen] = useDemoFlag(SEEN_KEY);
   /** Null until the visitor opens or closes it themselves. */
@@ -106,40 +103,24 @@ export function DemoTour() {
 
   if (!open) {
     return (
-      <motion.button
+      <button
         type="button"
-        initial={{ scale: 0, rotate: -90 }}
-        animate={{ scale: 1, rotate: 0 }}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.92 }}
-        transition={BOUNCY}
         onClick={() => {
           setIndex(0);
           setChosen(true);
         }}
         className="fixed right-3 bottom-16 z-30 flex h-11 items-center gap-2 rounded-full border bg-background/95 px-4 text-sm font-medium shadow-lg backdrop-blur-md transition hover:bg-accent md:bottom-4 print:hidden"
       >
-        {/* Slowly turning, so the button reads as an invitation rather than
-            as another piece of chrome to ignore. */}
-        <motion.span
-          animate={{ rotate: 360 }}
-          transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
-          className="flex"
-        >
-          <Compass className="size-4 text-primary" />
-        </motion.span>
+        <Compass className="size-4 text-primary" />
         {t("demo.guideOpen")}
-      </motion.button>
+      </button>
     );
   }
 
   return (
-    <motion.div
+    <div
       role="dialog"
       aria-label={t("demo.guideTitle")}
-      initial={{ opacity: 0, y: 60, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={BOUNCY}
       className="fixed inset-x-3 bottom-16 z-30 mx-auto max-w-md rounded-2xl border bg-background/97 p-4 shadow-2xl backdrop-blur-md md:bottom-4 print:hidden"
     >
       <div className="flex items-start gap-2">
@@ -151,20 +132,9 @@ export function DemoTour() {
               total: num(STEPS.length),
             })}
           </p>
-          {/* Keyed on the step, so moving through the tour swaps the words
-              rather than silently rewriting them under the reader. */}
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.h2
-              key={index}
-              initial={{ opacity: 0, x: 14 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -14 }}
-              transition={SNAPPY}
-              className="mt-0.5 font-display text-base leading-tight font-semibold"
-            >
-              {t(step.title)}
-            </motion.h2>
-          </AnimatePresence>
+          <h2 className="mt-0.5 font-display text-base leading-tight font-semibold">
+            {t(step.title)}
+          </h2>
         </div>
         <button
           type="button"
@@ -176,18 +146,9 @@ export function DemoTour() {
         </button>
       </div>
 
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.p
-          key={index}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={SPRING}
-          className="mt-2 text-sm leading-relaxed text-muted-foreground"
-        >
-          {t(step.body)}
-        </motion.p>
-      </AnimatePresence>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        {t(step.body)}
+      </p>
 
       <div className="mt-3 flex items-center gap-2">
         {index > 0 ? (
@@ -226,6 +187,6 @@ export function DemoTour() {
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

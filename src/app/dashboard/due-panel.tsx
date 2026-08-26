@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion } from "motion/react";
 import { BellRing, Check, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { markReceiptPaid } from "@/app/actions/receipts";
@@ -26,7 +25,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { SPRING } from "@/components/motion/springs";
 import {
   Card,
   CardContent,
@@ -98,107 +96,93 @@ export function DuePanel({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* DEMO BUILD — the reminder list is the one place a row genuinely
-            leaves: marking a pledge received takes it off the list, and it is
-            worth seeing go. AnimatePresence + layout means the row slides out
-            and the ones below close the gap. */}
-        <motion.ul layout className="flex flex-col gap-2">
-          <AnimatePresence initial={false}>
-            {pledges.map((p, index) => {
-              const overdue = Boolean(p.due_on) && p.due_on! < today;
-              return (
-                <motion.li
-                  key={p.id}
-                  layout
-                  initial={{ opacity: 0, x: -20, scale: 0.96 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: 40, scale: 0.9 }}
-                  transition={{ ...SPRING, delay: Math.min(index * 0.05, 0.4) }}
-                  className="rounded-lg border p-2.5"
-                >
-                  {/* Name and amount on their own line: with the two buttons on
+        <ul className="flex flex-col gap-2">
+          {pledges.map((p) => {
+            const overdue = Boolean(p.due_on) && p.due_on! < today;
+            return (
+              <li key={p.id} className="rounded-lg border p-2.5">
+                {/* Name and amount on their own line: with the two buttons on
                     the same row, a phone squeezed the name to one word per
                     line. Buttons sit below, full-width and thumb-sized. */}
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="wrap-anywhere min-w-0 text-sm font-medium">
-                      {p.donor_name}
-                    </span>
-                    {/* What is still owed, not what was promised: the card total
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="wrap-anywhere min-w-0 text-sm font-medium">
+                    {p.donor_name}
+                  </span>
+                  {/* What is still owed, not what was promised: the card total
                       above is the sum of these, and showing the face amount
                       here made the rows disagree with it on a part-paid
                       pledge. */}
-                    <span className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="font-semibold tabular-nums text-pending-ink">
-                        {formatAmount(outstanding(p))}
-                      </span>
-                      {isPartPaid(p) ? (
-                        <span className="flex items-center gap-1.5">
-                          <PaidProgress
-                            paid={received(p)}
-                            total={p.amount}
-                            className="w-12"
-                          />
-                          <PaidPill
-                            label={t("status.paidOfTotal", {
-                              paid: formatAmount(received(p)),
-                            })}
-                          />
-                        </span>
-                      ) : null}
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="font-semibold tabular-nums text-pending-ink">
+                      {formatAmount(outstanding(p))}
                     </span>
-                  </div>
+                    {isPartPaid(p) ? (
+                      <span className="flex items-center gap-1.5">
+                        <PaidProgress
+                          paid={received(p)}
+                          total={p.amount}
+                          className="w-12"
+                        />
+                        <PaidPill
+                          label={t("status.paidOfTotal", {
+                            paid: formatAmount(received(p)),
+                          })}
+                        />
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
 
-                  <p
-                    className={cn(
-                      "mt-0.5 text-xs",
-                      overdue ? "text-destructive" : "text-muted-foreground",
-                    )}
-                  >
-                    {p.due_on
-                      ? overdue
-                        ? t("status.overdue", {
-                            date: formatDate(p.due_on, locale),
-                          })
-                        : t("due.today")
-                      : ""}
-                  </p>
+                <p
+                  className={cn(
+                    "mt-0.5 text-xs",
+                    overdue ? "text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {p.due_on
+                    ? overdue
+                      ? t("status.overdue", {
+                          date: formatDate(p.due_on, locale),
+                        })
+                      : t("due.today")
+                    : ""}
+                </p>
 
-                  <div className="mt-2 flex gap-2 sm:justify-end">
-                    {/* A nudge to the contributor uses the same wa.me intent the
+                <div className="mt-2 flex gap-2 sm:justify-end">
+                  {/* A nudge to the contributor uses the same wa.me intent the
                       receipts do — no API, no keys, nothing to configure. */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 sm:flex-none"
-                      onClick={() =>
-                        window.open(
-                          pledgeReminderUrl(p, mandalName),
-                          "_blank",
-                          "noopener",
-                        )
-                      }
-                    >
-                      <MessageCircle /> {t("due.remind")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 sm:flex-none"
-                      onClick={() => setToMarkPaid(p)}
-                      disabled={paying === p.id}
-                    >
-                      {paying === p.id ? (
-                        <Loader2 className="animate-spin" />
-                      ) : (
-                        <Check />
-                      )}
-                      {t("status.markPaid")}
-                    </Button>
-                  </div>
-                </motion.li>
-              );
-            })}
-          </AnimatePresence>
-        </motion.ul>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 sm:flex-none"
+                    onClick={() =>
+                      window.open(
+                        pledgeReminderUrl(p, mandalName),
+                        "_blank",
+                        "noopener",
+                      )
+                    }
+                  >
+                    <MessageCircle /> {t("due.remind")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                    onClick={() => setToMarkPaid(p)}
+                    disabled={paying === p.id}
+                  >
+                    {paying === p.id ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Check />
+                    )}
+                    {t("status.markPaid")}
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </CardContent>
 
       <AlertDialog

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion } from "motion/react";
 import {
   Loader2,
   MessageCircle,
@@ -34,7 +33,6 @@ import {
 } from "@/lib/receipt-utils";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
-import { SPRING } from "@/components/motion/springs";
 import { useNewRows } from "@/lib/use-new-rows";
 import { PaidPill, UnpaidBadge } from "./money-badges";
 import { PaidProgress } from "./paid-progress";
@@ -164,12 +162,10 @@ export function ReceiptsTable({
   // refresh replaces `receipts`, which changes the key and drops the stale
   // tail — derived rather than reset in an effect.
   const pageKey = `${receipts.length}:${receipts[0]?.id ?? ""}`;
-  const [tail, setTail] = React.useState<{ key: string; rows: LocalReceipt[] }>(
-    {
-      key: pageKey,
-      rows: [],
-    },
-  );
+  const [tail, setTail] = React.useState<{ key: string; rows: LocalReceipt[] }>({
+    key: pageKey,
+    rows: [],
+  });
   /**
    * Receipts whose delete has been confirmed but not yet sent. They are gone
    * from the list straight away — the row disappearing is what makes the undo
@@ -179,12 +175,8 @@ export function ReceiptsTable({
   const [undoable, setUndoable] = React.useState<string[]>([]);
   /** Confirmed, still on screen while its exit plays. */
   const [leaving, setLeaving] = React.useState<string[]>([]);
-  const undoTimers = React.useRef(
-    new Map<string, ReturnType<typeof setTimeout>>(),
-  );
-  const exitTimers = React.useRef(
-    new Map<string, ReturnType<typeof setTimeout>>(),
-  );
+  const undoTimers = React.useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const exitTimers = React.useRef(new Map<string, ReturnType<typeof setTimeout>>());
   // A device put to sleep mid-window would otherwise fire the delete into an
   // unmounted tree.
   React.useEffect(() => {
@@ -206,9 +198,7 @@ export function ReceiptsTable({
   const hasMore = typeof total === "number" && all.length < total;
   // Watched on the server's own page rather than on `all`: the pages appended
   // by Load more are old rows arriving late, not new ones.
-  const arrived = useNewRows(
-    React.useMemo(() => receipts.map((r) => r.id), [receipts]),
-  );
+  const arrived = useNewRows(React.useMemo(() => receipts.map((r) => r.id), [receipts]));
 
   async function loadMore() {
     setLoadingMore(true);
@@ -230,9 +220,7 @@ export function ReceiptsTable({
   /** Id of the receipt whose share image is currently being generated. */
   const [sending, setSending] = React.useState<string | null>(null);
   /** Pledge waiting for the volunteer to say how it was actually paid. */
-  const [toMarkPaid, setToMarkPaid] = React.useState<
-    LocalReceipt | undefined
-  >();
+  const [toMarkPaid, setToMarkPaid] = React.useState<LocalReceipt | undefined>();
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -246,17 +234,12 @@ export function ReceiptsTable({
         );
     // Sorts what is loaded. With a paginated tail the top of an amount sort is
     // the largest of the rows fetched so far, not of the whole ledger.
-    return sortRows(
-      matched,
-      sort,
-      {
-        date: (r) => r.collection_date,
-        amount: (r) => r.amount,
-        name: (r) => r.donor_name,
-        number: (r) => r.receipt_number,
-      },
-      locale,
-    );
+    return sortRows(matched, sort, {
+      date: (r) => r.collection_date,
+      amount: (r) => r.amount,
+      name: (r) => r.donor_name,
+      number: (r) => r.receipt_number,
+    }, locale);
   }, [all, query, sort, locale]);
 
   function openCreate() {
@@ -285,10 +268,10 @@ export function ReceiptsTable({
    */
   const editingGone = Boolean(
     dialogOpen &&
-    editing &&
-    editing.pending !== "create" &&
-    online &&
-    !all.some((r) => r.id === editing.id),
+      editing &&
+      editing.pending !== "create" &&
+      online &&
+      !all.some((r) => r.id === editing.id),
   );
 
   // Only the notice needs an effect. The dialog is already closed by the line
@@ -384,10 +367,7 @@ export function ReceiptsTable({
     undoTimers.current.delete(receipt.id);
 
     // Offline, or the row has never reached the server in the first place.
-    if (
-      (!online || receipt.pending === "create") &&
-      (await queueDelete(receipt))
-    )
+    if ((!online || receipt.pending === "create") && (await queueDelete(receipt)))
       return;
 
     let result;
@@ -478,9 +458,7 @@ export function ReceiptsTable({
               <TableHead>{t("table.mobile")}</TableHead>
               <TableHead>{t("table.method")}</TableHead>
               <TableHead>{t("table.date")}</TableHead>
-              <TableHead className="w-24 text-right">
-                {t("table.actions")}
-              </TableHead>
+              <TableHead className="w-24 text-right">{t("table.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -571,10 +549,7 @@ export function ReceiptsTable({
                   </TableCell>
                   <TableCell>
                     {receipt.payment_status === "Paid" ? (
-                      <MethodBadge
-                        method={receipt.payment_method}
-                        label={t(`method.${receipt.payment_method}`)}
-                      />
+                      <MethodBadge method={receipt.payment_method} label={t(`method.${receipt.payment_method}`)} />
                     ) : null}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
@@ -648,136 +623,114 @@ export function ReceiptsTable({
 
       {/* Mobile: one card per receipt — no horizontal scrolling, thumb-sized
           actions, and the amount is the most prominent thing on the row. */}
-      {/* DEMO BUILD — the phone list is animated; the desktop table above is
-          deliberately not. A `layout` animation on a <tr> fights the table's
-          own column sizing and jitters on every re-measure, and the table
-          already flashes an arriving row in CSS. */}
-      <motion.ul layout className="flex flex-col gap-2 sm:hidden">
+      <ul className="flex flex-col gap-2 sm:hidden">
         {filtered.length === 0 ? (
           <li className="rounded-lg border py-10 text-center text-sm text-muted-foreground">
             {all.length === 0 ? t("table.empty") : t("table.noMatch")}
           </li>
         ) : (
-          <AnimatePresence initial={false}>
-            {filtered.map((receipt, index) => (
-              <motion.li
-                key={receipt.id}
-                layout
-                initial={{ opacity: 0, y: 24, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -60, scale: 0.9 }}
-                transition={{
-                  ...SPRING,
-                  // Only the first screenful is staggered. Past that the delay
-                  // would be longer than the scroll it is decorating.
-                  delay: Math.min(index * 0.035, 0.5),
-                }}
-                whileTap={{ scale: 0.985 }}
-                className={cn(
-                  "card-elevated rounded-xl border bg-card p-3",
-                  // The card paints its own background, so its wash has to end
-                  // on that rather than on nothing.
-                  arrived.has(receipt.id) &&
-                    "row-new [--row-new-end:var(--card)]",
-                  leaving.includes(receipt.id) && "row-leaving",
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="wrap-anywhere font-medium">
-                      {receipt.donor_name}
-                    </p>
-                    {editors[receipt.id]?.length ? (
-                      <EditingBadge
-                        label={t("lock.badge", {
-                          who: editors[receipt.id].join(", "),
-                        })}
-                      />
-                    ) : null}
-                    {/* Number and phone on one line, the date on its own below
+          filtered.map((receipt) => (
+            <li
+              key={receipt.id}
+              className={cn(
+                "card-elevated rounded-xl border bg-card p-3",
+                // The card paints its own background, so its wash has to end
+                // on that rather than on nothing.
+                arrived.has(receipt.id) && "row-new [--row-new-end:var(--card)]",
+                leaving.includes(receipt.id) && "row-leaving",
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="wrap-anywhere font-medium">
+                    {receipt.donor_name}
+                  </p>
+                  {editors[receipt.id]?.length ? (
+                    <EditingBadge
+                      label={t("lock.badge", {
+                        who: editors[receipt.id].join(", "),
+                      })}
+                    />
+                  ) : null}
+                  {/* Number and phone on one line, the date on its own below
                       it. Wrapped as one line, a long name or a queued-offline
                       label broke the row at a different point on every card,
                       so the date sat mid-line on one and alone on the next. */}
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1 tabular-nums">
-                        {receipt.pending === "create" ? (
-                          <>
-                            <CloudOff className="size-3 text-amber-600" />
-                            {t("offline.pending")}
-                          </>
-                        ) : (
-                          `#${receipt.receipt_number}`
-                        )}
-                      </span>
-                      <span aria-hidden>·</span>
-                      <span className="tabular-nums">
-                        {receipt.phone_number}
-                      </span>
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      <span>{formatDate(receipt.collection_date, locale)}</span>
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    {/* A split contribution is two pills of equal weight —
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1 tabular-nums">
+                      {receipt.pending === "create" ? (
+                        <>
+                          <CloudOff className="size-3 text-amber-600" />
+                          {t("offline.pending")}
+                        </>
+                      ) : (
+                        `#${receipt.receipt_number}`
+                      )}
+                    </span>
+                    <span aria-hidden>·</span>
+                    <span className="tabular-nums">{receipt.phone_number}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    <span>{formatDate(receipt.collection_date, locale)}</span>
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {/* A split contribution is two pills of equal weight —
                       arrived, and still owed — with the bar showing the
                       proportion and no total: the halves already say it, and a
                       third figure on a narrow card reads as a third sum. The
                       table, which has the width, still carries the total. */}
-                    {isPartPaid(receipt) ? (
-                      <>
-                        <PaidPill
-                          label={t("status.paidOfTotal", {
-                            paid: formatAmount(received(receipt)),
-                          })}
-                        />
+                  {isPartPaid(receipt) ? (
+                    <>
+                      <PaidPill
+                        label={t("status.paidOfTotal", {
+                          paid: formatAmount(received(receipt)),
+                        })}
+                      />
+                      <UnpaidBadge
+                        dueOn={receipt.due_on}
+                        today={today}
+                        label={t("status.partPaidBadge", {
+                          amount: formatAmount(outstanding(receipt)),
+                        })}
+                        title={dueTitle(receipt.due_on)}
+                      />
+                      <PaidProgress
+                        paid={received(receipt)}
+                        total={receipt.amount}
+                        className="w-full"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <span
+                        className={cn(
+                          "text-lg font-semibold tabular-nums",
+                          // Nothing has arrived on a pledge, so the figure is
+                          // struck: it is what was promised, not what is held.
+                          receipt.payment_status === "Unpaid" &&
+                            "text-muted-foreground line-through",
+                        )}
+                      >
+                        {formatAmount(receipt.amount)}
+                      </span>
+                      {receipt.payment_status === "Unpaid" ? (
                         <UnpaidBadge
                           dueOn={receipt.due_on}
                           today={today}
-                          label={t("status.partPaidBadge", {
-                            amount: formatAmount(outstanding(receipt)),
-                          })}
+                          label={t("status.unpaidBadge")}
                           title={dueTitle(receipt.due_on)}
                         />
-                        <PaidProgress
-                          paid={received(receipt)}
-                          total={receipt.amount}
-                          className="w-full"
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <span
-                          className={cn(
-                            "text-lg font-semibold tabular-nums",
-                            // Nothing has arrived on a pledge, so the figure is
-                            // struck: it is what was promised, not what is held.
-                            receipt.payment_status === "Unpaid" &&
-                              "text-muted-foreground line-through",
-                          )}
-                        >
-                          {formatAmount(receipt.amount)}
-                        </span>
-                        {receipt.payment_status === "Unpaid" ? (
-                          <UnpaidBadge
-                            dueOn={receipt.due_on}
-                            today={today}
-                            label={t("status.unpaidBadge")}
-                            title={dueTitle(receipt.due_on)}
-                          />
-                        ) : (
-                          <MethodBadge
-                            method={receipt.payment_method}
-                            label={t(`method.${receipt.payment_method}`)}
-                          />
-                        )}
-                      </>
-                    )}
-                  </div>
+                      ) : (
+                        <MethodBadge method={receipt.payment_method} label={t(`method.${receipt.payment_method}`)} />
+                      )}
+                    </>
+                  )}
                 </div>
+              </div>
 
-                <div className="mt-3 flex gap-2">
-                  {/* One primary action per state, and the two must come out the
+              <div className="mt-3 flex gap-2">
+                {/* One primary action per state, and the two must come out the
                     same width. `flex-1` alone does not do it: a flex item's
                     min-width is its content, button labels never wrap
                     (whitespace-nowrap is in the variant), and once the three
@@ -789,91 +742,90 @@ export function ReceiptsTable({
                     whatever the label, and Edit drops its text to match the
                     print and delete buttons already beside it, which frees the
                     room that made the overflow possible in the first place. */}
-                  {!isFullyPaid(receipt) ? (
-                    <>
-                      <Button
-                        className="min-w-0 flex-1 basis-0"
-                        onClick={() => setToMarkPaid(receipt)}
-                        disabled={marking === receipt.id}
-                      >
-                        {marking === receipt.id ? (
-                          <Loader2 className="animate-spin" />
-                        ) : (
-                          <Check />
-                        )}
-                        {t("status.markPaidShort")}
-                      </Button>
-                      {/* Icon-only: sending is a second action on this state,
+                {!isFullyPaid(receipt) ? (
+                  <>
+                    <Button
+                      className="min-w-0 flex-1 basis-0"
+                      onClick={() => setToMarkPaid(receipt)}
+                      disabled={marking === receipt.id}
+                    >
+                      {marking === receipt.id ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Check />
+                      )}
+                      {t("status.markPaidShort")}
+                    </Button>
+                    {/* Icon-only: sending is a second action on this state,
                         and a fifth label would put the row over the edge of a
                         narrow phone — the very overflow the note above fixes. */}
-                      <Button
-                        variant="whatsapp"
-                        size="icon"
-                        aria-label={t("table.sendTitle", {
-                          name: receipt.donor_name,
-                        })}
-                        title={t("table.send")}
-                        onClick={() => sendWhatsApp(receipt)}
-                        disabled={sending === receipt.id}
-                      >
-                        {sending === receipt.id ? (
-                          <Loader2 className="animate-spin" />
-                        ) : (
-                          <MessageCircle />
-                        )}
-                      </Button>
-                    </>
-                  ) : (
                     <Button
                       variant="whatsapp"
-                      className="min-w-0 flex-1 basis-0"
-                      disabled={sending === receipt.id}
+                      size="icon"
+                      aria-label={t("table.sendTitle", {
+                        name: receipt.donor_name,
+                      })}
+                      title={t("table.send")}
                       onClick={() => sendWhatsApp(receipt)}
+                      disabled={sending === receipt.id}
                     >
                       {sending === receipt.id ? (
                         <Loader2 className="animate-spin" />
                       ) : (
                         <MessageCircle />
                       )}
-                      {t("table.send")}
                     </Button>
-                  )}
+                  </>
+                ) : (
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("table.edit")}
-                    onClick={() => openEdit(receipt)}
+                    variant="whatsapp"
+                    className="min-w-0 flex-1 basis-0"
+                    disabled={sending === receipt.id}
+                    onClick={() => sendWhatsApp(receipt)}
                   >
-                    <Pencil />
+                    {sending === receipt.id ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <MessageCircle />
+                    )}
+                    {t("table.send")}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("table.print")}
-                    onClick={() =>
-                      window.open(
-                        `/dashboard/receipts/${receipt.id}`,
-                        "_blank",
-                        "noopener",
-                      )
-                    }
-                  >
-                    <Printer />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("table.delete")}
-                    onClick={() => setToDelete(receipt)}
-                  >
-                    <Trash2 className="text-destructive" />
-                  </Button>
-                </div>
-              </motion.li>
-            ))}
-          </AnimatePresence>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("table.edit")}
+                  onClick={() => openEdit(receipt)}
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("table.print")}
+                  onClick={() =>
+                    window.open(
+                      `/dashboard/receipts/${receipt.id}`,
+                      "_blank",
+                      "noopener",
+                    )
+                  }
+                >
+                  <Printer />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("table.delete")}
+                  onClick={() => setToDelete(receipt)}
+                >
+                  <Trash2 className="text-destructive" />
+                </Button>
+              </div>
+            </li>
+          ))
         )}
-      </motion.ul>
+      </ul>
 
       <div className="flex flex-col items-center gap-2">
         {filtered.length > 0 ? (
