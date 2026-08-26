@@ -1,6 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // DEMO BUILD — the branding the production app reads from the host's
+  // environment is baked in here instead, so `git clone && npm install &&
+  // npm run dev` works with no setup, and deploying needs no variables set.
+  // Nothing here is a secret; the demo has no backend to hold one.
+  env: {
+    NEXT_PUBLIC_MANDAL_NAME: "श्री गणेश मित्र मंडळ",
+    NEXT_PUBLIC_MANDAL_ADDRESS: "शिवाजी चौक, पुणे ४११ ०३०",
+    NEXT_PUBLIC_MANDAL_PRESIDENT: "रमेश जोशी",
+    NEXT_PUBLIC_MANDAL_VICE_PRESIDENT: "सविता कुलकर्णी",
+    NEXT_PUBLIC_RECEIPT_WATERMARK: "/idol.jpg",
+  },
   // Deliberately no `experimental.staleTimes`. Caching page segments to save
   // refetches on tab switches was tried and reverted: keeping them meant a
   // colleague's edit had to invalidate the other cached tabs, and the only tool

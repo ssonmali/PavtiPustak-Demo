@@ -12,6 +12,8 @@ import { BottomNav, SidebarNav } from "./sidebar-nav";
 import { RealtimeRefresh } from "./realtime-refresh";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { NotificationBell } from "./notification-bell";
+import { DemoBanner } from "@/components/demo/demo-banner";
+import { DemoTour } from "@/components/demo/demo-tour";
 
 export default async function DashboardLayout({
   children,
@@ -100,6 +102,9 @@ export default async function DashboardLayout({
           </div>
         </header>
 
+        {/* DEMO BUILD — neither of these exists in the production app. */}
+        <DemoBanner />
+
         <div className="mx-auto flex w-full max-w-7xl flex-1">
           <SidebarNav />
           {/*
@@ -136,6 +141,7 @@ export default async function DashboardLayout({
         </div>
 
         <BottomNav />
+        <DemoTour />
       </div>
     </I18nProvider>
   );
