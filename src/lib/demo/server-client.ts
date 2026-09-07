@@ -206,6 +206,21 @@ export async function createDemoServerClient() {
         return { data: { user: userFor(email) }, error: null };
       },
 
+      /**
+       * The production proxy and `getViewer` verify the JWT locally and read
+       * the claims rather than fetching the user. There is no token here, so
+       * the claims are assembled from the session cookie — the same two fields
+       * (`sub`, `email`) those callers actually read.
+       */
+      async getClaims() {
+        const user = userFor(email);
+        if (!user) return { data: null, error: null };
+        return {
+          data: { claims: { sub: user.id, email: user.email } },
+          error: null,
+        };
+      },
+
       async getSession() {
         const user = userFor(email);
         return {

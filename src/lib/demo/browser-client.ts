@@ -103,13 +103,22 @@ class DemoChannel {
     }, JOURNAL_POLL);
   }
 
-  subscribe(callback?: (status: Status) => void) {
+  /**
+   * The real client hands the callback an error alongside the status, and
+   * use-realtime reads both to tell one dead binding from a dead socket. There
+   * is nothing here that can fail, so the second argument is always undefined
+   * — but the signature has to accept it or the app would not typecheck.
+   */
+  subscribe(callback?: (status: Status, err?: Error) => void) {
     // Only the table-changes channel has table handlers; the presence channel
     // has nothing a cookie could tell it.
     if (this.handlers.length) this.watchJournal();
     // Async, like a real join: the presence effect waits on the ack, and firing
     // it synchronously would have it run before React has committed.
-    setTimeout(() => callback?.(this.socket ? "SUBSCRIBED" : "CLOSED"), 0);
+    setTimeout(
+      () => callback?.(this.socket ? "SUBSCRIBED" : "CLOSED", undefined),
+      0,
+    );
     return this;
   }
 

@@ -39,7 +39,7 @@ export const getPledgeDays = cache(async (): Promise<PledgeDay[]> => {
 
   if (!view.error && view.data) {
     // numeric arrives as a string over the wire — these are money sums.
-    return view.data.map((d) => ({
+    return view.data.map((d: Record<string, unknown>) => ({
       collection_date: d.collection_date as string,
       outstanding_total: Number(d.outstanding_total ?? 0),
       pledge_rows: Number(d.pledge_rows ?? 0),
