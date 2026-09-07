@@ -220,8 +220,57 @@ export function payableTotals(db: DemoDb): PayableTotals {
 }
 
 /** Every view, resolved by the name the app queries it under. */
+
+/** A row of `pledge_daily_totals` — migration 18. */
+export type PledgeDayTotal = {
+  collection_date: string;
+  outstanding_total: number;
+  pledge_rows: number;
+  pledge_only_count: number;
+  owing_count: number;
+};
+
+/**
+ * `pledge_daily_totals` — the unpaid rows of each day, aggregated.
+ *
+ * A transcription of supabase/18-pledge-daily-totals.sql. The SQL sums the
+ * stored generated columns amount_received and amount_outstanding, whose
+ * definitions ARE received() and outstanding(), so those helpers are reused
+ * here rather than the rule being written down a second time.
+ */
+export function pledgeDailyTotals(db: DemoDb): PledgeDayTotal[] {
+  const byDate = new Map<string, PledgeDayTotal>();
+
+  for (const r of db.receipts) {
+    // `where payment_status = 'Unpaid'` — the pledges, not the whole ledger.
+    if (r.payment_status !== "Unpaid") continue;
+
+    const row = byDate.get(r.collection_date) ?? {
+      collection_date: r.collection_date,
+      outstanding_total: 0,
+      pledge_rows: 0,
+      pledge_only_count: 0,
+      owing_count: 0,
+    };
+
+    const owed = outstanding(r);
+    row.outstanding_total += owed;
+    row.pledge_rows += 1;
+    // Brought in nothing at all, so the daily totals view did not count it.
+    if (received(r) === 0) row.pledge_only_count += 1;
+    // Still owes something — a part-paid row settled to zero does not.
+    if (owed > 0) row.owing_count += 1;
+
+    byDate.set(r.collection_date, row);
+  }
+
+  return [...byDate.values()];
+}
+
 export function resolveView(db: DemoDb, name: string): Record<string, unknown>[] {
   switch (name) {
+    case "pledge_daily_totals":
+      return pledgeDailyTotals(db) as unknown as Record<string, unknown>[];
     case "receipt_daily_totals":
       return receiptDailyTotals(db) as unknown as Record<string, unknown>[];
     case "volunteer_totals":

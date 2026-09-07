@@ -4,6 +4,7 @@ import {
   donorDirectory,
   expenseDailyTotals,
   payableTotals,
+  pledgeDailyTotals,
   pledgeTotals,
   receiptDailyTotals,
   volunteerTotals,
@@ -279,5 +280,114 @@ describe("expenseDailyTotals and payableTotals", () => {
     expect(totals.owed).toBe(900);
     expect(totals.overdue).toBe(0);
     expect(totals.due_now).toBe(0);
+  });
+});
+
+/**
+ * `pledge_daily_totals` — migration 18.
+ *
+ * Four aggregates over the same rows, and three of them count subtly different
+ * things. Each of these pins one clause of the SQL.
+ */
+describe("pledgeDailyTotals", () => {
+  it("ignores everything that is not a pledge", () => {
+    const rows = pledgeDailyTotals(
+      db({
+        receipts: [
+          receipt({ amount: 500, payment_status: "Paid" }),
+          receipt({ amount: 700, payment_status: "Unpaid" }),
+        ],
+      }),
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].pledge_rows).toBe(1);
+    expect(rows[0].outstanding_total).toBe(700);
+  });
+
+  it("sums only what is still owed on a part-paid pledge", () => {
+    const [row] = pledgeDailyTotals(
+      db({
+        receipts: [
+          receipt({ amount: 1000, paid_amount: 400, payment_status: "Unpaid" }),
+        ],
+      }),
+    );
+
+    expect(row.outstanding_total).toBe(600);
+    // It brought money in, so it is not a pledge-only row...
+    expect(row.pledge_only_count).toBe(0);
+    // ...but it still owes, so it is counted as owing.
+    expect(row.owing_count).toBe(1);
+  });
+
+  it("counts a pledge that has brought in nothing as pledge-only", () => {
+    const [row] = pledgeDailyTotals(
+      db({
+        receipts: [receipt({ amount: 900, payment_status: "Unpaid" })],
+      }),
+    );
+
+    expect(row.pledge_only_count).toBe(1);
+    expect(row.owing_count).toBe(1);
+    expect(row.outstanding_total).toBe(900);
+  });
+
+  it("stops counting a pledge as owing once its remainder reaches zero", () => {
+    // Paid in full but never marked Paid — the row the `amount_outstanding > 0`
+    // filter exists for.
+    const [row] = pledgeDailyTotals(
+      db({
+        receipts: [
+          receipt({ amount: 800, paid_amount: 800, payment_status: "Unpaid" }),
+        ],
+      }),
+    );
+
+    expect(row.pledge_rows).toBe(1);
+    expect(row.outstanding_total).toBe(0);
+    expect(row.owing_count).toBe(0);
+    expect(row.pledge_only_count).toBe(0);
+  });
+
+  it("groups by collection_date, not due date", () => {
+    const rows = pledgeDailyTotals(
+      db({
+        receipts: [
+          receipt({
+            amount: 100,
+            collection_date: "2026-09-01",
+            due_on: "2026-10-01",
+            payment_status: "Unpaid",
+          }),
+          receipt({
+            amount: 200,
+            collection_date: "2026-09-01",
+            due_on: "2026-11-01",
+            payment_status: "Unpaid",
+          }),
+          receipt({
+            amount: 400,
+            collection_date: "2026-09-02",
+            payment_status: "Unpaid",
+          }),
+        ],
+      }),
+    );
+
+    const byDate = Object.fromEntries(
+      rows.map((row) => [row.collection_date, row]),
+    );
+    expect(byDate["2026-09-01"].outstanding_total).toBe(300);
+    expect(byDate["2026-09-01"].pledge_rows).toBe(2);
+    expect(byDate["2026-09-02"].outstanding_total).toBe(400);
+  });
+
+  it("returns no rows at all when there are no pledges", () => {
+    expect(
+      pledgeDailyTotals(
+        db({ receipts: [receipt({ payment_status: "Paid" })] }),
+      ),
+    ).toEqual([]);
   });
 });

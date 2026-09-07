@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildDb } from "@/lib/demo/db";
 import { encodeJournal, decodeJournal, type Op } from "@/lib/demo/journal";
 import { DemoQuery } from "@/lib/demo/query";
+import { searchFilter } from "@/app/dashboard/receipts-query";
 
 /**
  * The fake PostgREST.
@@ -169,5 +170,77 @@ describe("the journal", () => {
   it("starts clean rather than throwing on a cookie it cannot read", () => {
     expect(decodeJournal("not-json")).toEqual([]);
     expect(decodeJournal(undefined)).toEqual([]);
+  });
+});
+
+/**
+ * `.or()` — the receipts search.
+ *
+ * The filter string is not hand-written here: it comes from searchFilter, the
+ * same function the page calls, so these assert the contract between the two
+ * rather than agreeing with themselves about a format.
+ */
+describe("DemoQuery.or", () => {
+  const searchRows = [
+    { id: "a", donor_name: "Sanjay Kulkarni", phone_number: "9820011111", receipt_number: 7 },
+    { id: "b", donor_name: "Meena Deshpande", phone_number: "9820022222", receipt_number: 8 },
+    { id: "c", donor_name: "Rahul Jadhav", phone_number: "9911100007", receipt_number: 9 },
+    { id: "d", donor_name: "100% Trust", phone_number: "9000000000", receipt_number: 10 },
+    { id: "e", donor_name: "A_B Mandal", phone_number: "9000000001", receipt_number: 11 },
+  ];
+  const search = (term: string) =>
+    new DemoQuery(() => searchRows.map((row) => ({ ...row })))
+      .select("*")
+      .or(searchFilter(term)!);
+
+  const ids = (data: { id: string }[]) => data.map((row) => row.id).sort();
+
+  it("matches a donor name case-insensitively, on a substring", async () => {
+    const { data } = await search("kulkarni");
+    expect(ids(data)).toEqual(["a"]);
+  });
+
+  it("matches on the phone number too", async () => {
+    const { data } = await search("98200222");
+    expect(ids(data)).toEqual(["b"]);
+  });
+
+  it("takes any of the clauses, not all of them", async () => {
+    // "7" is both a slip number (row a) and inside row c's phone number.
+    const { data } = await search("7");
+    expect(ids(data)).toEqual(["a", "c"]);
+  });
+
+  it("compares receipt_number as a number, not a string", async () => {
+    const { data } = await search("11");
+    // Row e's slip number is 11; no phone or name contains "11".
+    expect(ids(data)).toContain("e");
+  });
+
+  it("treats % in the search term as a literal, not a wildcard", async () => {
+    const { data } = await search("100%");
+    // If % leaked through as a wildcard this would also match row c (9911100007).
+    expect(ids(data)).toEqual(["d"]);
+  });
+
+  it("treats _ in the search term as a literal, not a single-character match", async () => {
+    const { data } = await search("A_B");
+    expect(ids(data)).toEqual(["e"]);
+  });
+
+  it("finds nothing rather than everything when nothing matches", async () => {
+    const { data } = await search("Nobody At All");
+    expect(data).toHaveLength(0);
+  });
+
+  it("narrows an eq filter rather than widening it", async () => {
+    const { data } = await new DemoQuery(() =>
+      searchRows.map((row) => ({ ...row })),
+    )
+      .select("*")
+      .eq("id", "b")
+      .or(searchFilter("sanjay")!);
+    // Row b is not Sanjay, so the two together match nothing.
+    expect(data).toHaveLength(0);
   });
 });

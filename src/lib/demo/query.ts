@@ -26,6 +26,75 @@ function source(db: DemoDb, name: string): Row[] {
 
 type Filter = { column: string; op: string; value: any };
 
+/**
+ * One `.or()` call: alternatives that pass if ANY of them matches.
+ *
+ * PostgREST spells this `donor_name.ilike."%x%",receipt_number.eq.7` — the
+ * format `searchFilter` in receipts-query.ts builds. Parsed once here rather
+ * than at match time, so a search costs one parse and not one per row.
+ */
+type OrFilter = { any: Filter[] };
+
+/** Splits an or-filter's clauses on commas that are not inside quotes. */
+function splitClauses(filter: string): string[] {
+  const out: string[] = [];
+  let current = "";
+  let quoted = false;
+
+  for (let i = 0; i < filter.length; i++) {
+    const char = filter[i];
+    if (char === "\\" && quoted) {
+      // Keep the escape and whatever it protects; unquote() reads it later.
+      current += char + (filter[i + 1] ?? "");
+      i++;
+    } else if (char === '"') {
+      quoted = !quoted;
+      current += char;
+    } else if (char === "," && !quoted) {
+      out.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  out.push(current);
+  return out.filter((clause) => clause.trim() !== "");
+}
+
+/**
+ * Strips the quotes PostgREST puts around a value and undoes the escaping
+ * `searchFilter` applied, so `"%a\%b%"` becomes the pattern `%a\%b%` with the
+ * middle `%` still marked as a literal for `ilike` to honour.
+ */
+function unquote(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || !trimmed.startsWith('"') || !trimmed.endsWith('"')) {
+    return trimmed;
+  }
+  return trimmed.slice(1, -1).replace(/\\(["\\])/g, "$1");
+}
+
+/** `donor_name.ilike."%x%"` -> one Filter. Unparseable clauses are dropped. */
+function parseClause(clause: string): Filter | null {
+  const first = clause.indexOf(".");
+  if (first < 0) return null;
+  const second = clause.indexOf(".", first + 1);
+  if (second < 0) return null;
+
+  const column = clause.slice(0, first).trim();
+  const op = clause.slice(first + 1, second).trim();
+  const raw = clause.slice(second + 1);
+  if (!column || !op) return null;
+
+  const value = unquote(raw);
+  // receipt_number is an integer column, so a numeric eq must compare as a
+  // number — `actual === value` would otherwise fail 7 === "7".
+  if (op === "eq" && /^-?\d+(\.\d+)?$/.test(value)) {
+    return { column, op, value: Number(value) };
+  }
+  return { column, op, value };
+}
+
 function matches(row: Row, filter: Filter): boolean {
   const actual = row[filter.column];
   const { value } = filter;
@@ -51,10 +120,25 @@ function matches(row: Row, filter: Filter): boolean {
     case "is":
       return actual === value;
     case "ilike": {
-      const pattern = String(value)
-        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-        .replace(/%/g, ".*")
-        .replace(/_/g, ".");
+      // Walk the pattern once: an unescaped % or _ is a wildcard, a
+      // backslash-escaped one is the literal character. Escaping the whole
+      // string for the regex first would turn `\%` into `\\%` and lose that
+      // distinction, which is why this is a scan and not a chain of replaces.
+      const source = String(value);
+      let pattern = "";
+      for (let i = 0; i < source.length; i++) {
+        const char = source[i];
+        if (char === "\\" && i + 1 < source.length) {
+          pattern += source[i + 1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          i++;
+        } else if (char === "%") {
+          pattern += ".*";
+        } else if (char === "_") {
+          pattern += ".";
+        } else {
+          pattern += char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        }
+      }
       return new RegExp(`^${pattern}$`, "i").test(String(actual ?? ""));
     }
     default:
@@ -93,6 +177,7 @@ function compare(a: any, b: any) {
  */
 export class DemoQuery implements PromiseLike<Result> {
   private filters: Filter[] = [];
+  private orFilters: OrFilter[] = [];
   private orders: { column: string; ascending: boolean }[] = [];
   private columns = "*";
   private wantCount = false;
@@ -134,6 +219,19 @@ export class DemoQuery implements PromiseLike<Result> {
     return this.filter(column, "ilike", value);
   }
 
+  /**
+   * PostgREST's `or=(...)`: the row passes if any one clause does. The app
+   * uses it for the receipts search, which asks three columns at once.
+   */
+  or(filter: string) {
+    const any = splitClauses(filter)
+      .map(parseClause)
+      .filter((clause): clause is Filter => clause !== null);
+    // An unparseable filter must not silently widen the result to everything.
+    if (any.length > 0) this.orFilters.push({ any });
+    return this;
+  }
+
   private filter(column: string, op: string, value: any) {
     this.filters.push({ column, op, value });
     return this;
@@ -162,8 +260,12 @@ export class DemoQuery implements PromiseLike<Result> {
 
   /** The rows this query selects, ordered but not yet paged. */
   matched(): Row[] {
-    const rows = this.rows().filter((row) =>
-      this.filters.every((filter) => matches(row, filter)),
+    const rows = this.rows().filter(
+      (row) =>
+        this.filters.every((filter) => matches(row, filter)) &&
+        this.orFilters.every((group) =>
+          group.any.some((filter) => matches(row, filter)),
+        ),
     );
 
     if (this.orders.length) {
